@@ -10,4 +10,15 @@ Double Dragon style 2D fighting game
 4. If you want to build the project, run `npm run build`.
 
 
+## Controls
+
+| Key | Action |
+|-----|--------|
+| W | Move up |
+| A | Move left |
+| S | Move down |
+| D | Move right |
+| O | Punch |
+| P | Uppercut |
+
 ![screenshot](screenshot.png)
