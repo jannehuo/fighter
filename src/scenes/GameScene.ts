@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { PlayerFrames, EnemyFrames } from '../frames';
+import VirtualJoystick from 'phaser3-rex-plugins/plugins/virtualjoystick.js';
 
 const PUNCH_RANGE = 120;
 const PUNCH_DURATION = 250;
@@ -48,6 +49,9 @@ export class GameScene extends Phaser.Scene {
     private enemyHealthBar!: Phaser.GameObjects.Graphics;
     private enemyIsKnockedOut = false;
     private knockoutFlyTimer = 0;
+    private joystick!: VirtualJoystick;
+    private mobilePunchPressed = false;
+    private mobileUppercutPressed = false;
     private knockoutVelX = 0;
     private knockoutVelY = 0;
     private knockoutHasGravity = false;
@@ -99,6 +103,29 @@ export class GameScene extends Phaser.Scene {
         this.keyP = kb.addKey(Phaser.Input.Keyboard.KeyCodes.P);
 
         this.enemy.play('enemy-walk');
+        this.createMobileControls();
+    }
+
+    private createActionButton(x: number, y: number, label: string, color: number, onDown: () => void) {
+        const bg = this.add.circle(x, y, 34, color, 0.6).setDepth(10).setInteractive();
+        this.add.text(x, y, label, { fontSize: '11px', color: '#ffffff' }).setOrigin(0.5).setDepth(11);
+        bg.on('pointerdown', () => { bg.setAlpha(0.95); onDown(); });
+        bg.on('pointerup', () => { bg.setAlpha(0.6); });
+        bg.on('pointerout', () => { bg.setAlpha(0.6); });
+    }
+
+    private createMobileControls() {
+        this.joystick = new VirtualJoystick(this, {
+            x: 90,
+            y: 420,
+            radius: 50,
+            base: this.add.circle(0, 0, 50, 0x000000, 0.4).setDepth(10),
+            thumb: this.add.circle(0, 0, 25, 0xffffff, 0.7).setDepth(11),
+            forceMin: 16,
+        });
+
+        this.createActionButton(710, 450, 'PUNCH', 0x2255cc, () => { this.mobilePunchPressed    = true; });
+        this.createActionButton(762, 405, 'UPPER', 0x228833, () => { this.mobileUppercutPressed = true; });
     }
 
     private drawHealthBar() {
@@ -282,7 +309,8 @@ export class GameScene extends Phaser.Scene {
         }
 
         // Uppercut
-        if (Phaser.Input.Keyboard.JustDown(this.keyP) && !this.isPunching && !this.isUppercutting) {
+        if ((Phaser.Input.Keyboard.JustDown(this.keyP) || this.mobileUppercutPressed) && !this.isPunching && !this.isUppercutting) {
+            this.mobileUppercutPressed = false;
             this.isUppercutting = true;
             this.player.stop();
             this.player.play('uppercut');
@@ -294,7 +322,8 @@ export class GameScene extends Phaser.Scene {
         }
 
         // Punch
-        if (Phaser.Input.Keyboard.JustDown(this.keyO) && !this.isUppercutting) {
+        if ((Phaser.Input.Keyboard.JustDown(this.keyO) || this.mobilePunchPressed) && !this.isUppercutting) {
+            this.mobilePunchPressed = false;
             this.isPunching = true;
             this.punchTimer = PUNCH_DURATION;
             this.player.stop();
@@ -310,10 +339,10 @@ export class GameScene extends Phaser.Scene {
 
         if (this.isPunching || this.isUppercutting) return;
 
-        const movingLeft = this.keyA.isDown;
-        const movingRight = this.keyD.isDown;
-        const movingUp = this.keyW.isDown;
-        const movingDown = this.keyS.isDown;
+        const movingLeft = this.keyA.isDown || this.joystick.left;
+        const movingRight = this.keyD.isDown || this.joystick.right;
+        const movingUp = this.keyW.isDown || this.joystick.up;
+        const movingDown = this.keyS.isDown || this.joystick.down;
 
         if (movingLeft) {
             this.player.x -= speed * delta / 1000;
